@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>تطبيق الشطرنج الذكي</title>
+  <!-- مكتبات التصميم ورقعة الشطرنج -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 12px;
+      background: #181818;
+      color: #fff;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      touch-action: manipulation;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: #2b2b2b;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .board-container {
+      position: relative;
+      width: 92vw;
+      max-width: 380px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    #board { width: 100%; }
+    #arrow-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none; /* للسماح بلمس الرقعة أسفل الرسم */
+      z-index: 10;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      width: 92vw;
+      max-width: 380px;
+    }
+    button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      background: #3b82f6;
+      color: #fff;
+      cursor: pointer;
+    }
+    button.secondary { background: #374151; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div id="status" class="status-badge">الدور: الأبيض ⚪</div>
+  </div>
+
+  <div class="board-container">
+    <div id="board"></div>
+    <canvas id="arrow-canvas"></canvas>
+  </div>
+
+  <div class="controls">
+    <button class="secondary" id="btn-undo">↩️ تراجع</button>
+    <button id="btn-new">🔄 لعبة جديدة</button>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand(); // فتح التطبيق بكامل الشاشة داخل تيليجرام
+
+    const game = new Chess();
+    const boardEl = $('#board');
+    const canvas = document.getElementById('arrow-canvas');
+    const ctx = canvas.getContext('2d');
+
+    // إعدادات أحجام الرقعة
+    function resizeCanvas() {
+      canvas.width = boardEl.width();
+      canvas.height = boardEl.height();
+    }
+
+    // تقييم القطع
+    const pieceValues = { p: 10, n: 32, b: 33, r: 50, q: 90, k: 1000 };
+
+    // حساب حركة بشرية ذكية مع سهم
+    function getHumanlikeMove() {
+      const moves = game.moves({ verbose: true });
+      if (moves.length === 0) return null;
+
+      const scored = [];
+      moves.forEach(m => {
+        game.move(m);
+        let score = 0;
+        game.board().forEach(row => {
+          row.forEach(p => {
+            if (p) {
+              const val = pieceValues[p.type];
+              score += (p.color === 'w' ? val : -val);
+            }
+          });
+        });
+        game.undo();
+        scored.push({ move: m, score: score });
+      });
+
+      // ترتيب حسب صاحب الدور
+      const isWhite = (game.turn() === 'w');
+      scored.sort((a, b) => isWhite ? b.score - a.score : a.score - b.score);
+
+      // استبعاد النقلات الفادحة وحساب نسبة بشرية
+      const best = scored[0].score;
+      const safeMoves = scored.filter(s => Math.abs(s.score - best) <= 15);
+
+      const roll = Math.random();
+      if (roll < 0.65 || safeMoves.length === 1) return safeMoves[0].move;
+      if (roll < 0.90 && safeMoves.length >= 2) return safeMoves[1].move;
+      return safeMoves[safeMoves.length - 1].move;
+    }
+
+    // رسم السهم من مربع إلى مربع
+    function drawArrow(fromSquare, toSquare) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!fromSquare || !toSquare) return;
+
+      const sqSize = canvas.width / 8;
+      const files = 'abcdefgh';
+
+      function getCenter(sq) {
+        const file = files.indexOf(sq[0]);
+        const rank = 8 - parseInt(sq[1]);
+        return {
+          x: file * sqSize + sqSize / 2,
+          y: rank * sqSize + sqSize / 2
+        };
+      }
+
+      const start = getCenter(fromSquare);
+      const end = getCenter(toSquare);
+
+      // رسم خط السهم ورأسه
+      const headlen = 16;
+      const angle = Math.atan2(end.y - start.y, end.x - start.x);
+
+      ctx.save();
+      ctx.strokeStyle = "rgba(46, 204, 113, 0.85)";
+      ctx.fillStyle = "rgba(46, 204, 113, 0.85)";
+      ctx.lineWidth = 8;
+      ctx.lineCap = "round";
+
+      // جسم السهم
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x - headlen * Math.cos(angle), end.y - headlen * Math.sin(angle));
+      ctx.stroke();
+
+      // رأس السهم
+      ctx.beginPath();
+      ctx.moveTo(end.x, end.y);
+      ctx.lineTo(end.x - headlen * Math.cos(angle - Math.PI / 6), end.y - headlen * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(end.x - headlen * Math.cos(angle + Math.PI / 6), end.y - headlen * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function updateGameStatus() {
+      let statusText = game.turn() === 'w' ? 'الدور: الأبيض ⚪' : 'الدور: الأسود ⚫';
+      if (game.in_checkmate()) {
+        statusText = '🏁 كش مات! الفائز: ' + (game.turn() === 'w' ? 'الأسود' : 'الأبيض');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      } else if (game.in_draw()) {
+        statusText = '⚖️ تعادل!';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      } else {
+        // رسم سهم النقلة المقترحة
+        const hint = getHumanlikeMove();
+        if (hint) {
+          drawArrow(hint.from, hint.to);
+        }
+      }
+      $('#status').text(statusText);
+    }
+
+    // تهيئة رقعة الشطرنج اللمسية
+    const board = Chessboard('board', {
+      draggable: true,
+      position: 'start',
+      pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+      onDragStart: function(source, piece) {
+        if (game.game_over()) return false;
+        // يمكنك تحريك أي قطعة (أبيض أو أسود)
+        if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+            (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+          return false;
+        }
+      },
+      onDrop: function(source, target) {
+        const move = game.move({
+          from: source,
+          to: target,
+          promotion: 'q'
+        });
+        if (move === null) return 'snapback';
+        updateGameStatus();
+      },
+      onSnapEnd: function() {
+        board.position(game.fen());
+      }
+    });
+
+    $(window).resize(function() {
+      board.resize();
+      resizeCanvas();
+      updateGameStatus();
+    });
+
+    $('#btn-new').click(() => {
+      game.reset();
+      board.start();
+      resizeCanvas();
+      updateGameStatus();
+    });
+
+    $('#btn-undo').click(() => {
+      game.undo();
+      board.position(game.fen());
+      updateGameStatus();
+    });
+
+    // تشغيل أولي
+    setTimeout(() => {
+      resizeCanvas();
+      updateGameStatus();
+    }, 200);
+  </script>
+</body>
+</html>
