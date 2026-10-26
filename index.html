@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>تطبيق الشطرنج الذكي</title>
-  <!-- مكتبات التصميم ورقعة الشطرنج -->
+  <title>مدرب الشطرنج الذكي الاحترافي</title>
+  
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
   <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -12,37 +12,115 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 
   <style>
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
     body {
       margin: 0;
-      padding: 12px;
-      background: #181818;
-      color: #fff;
-      font-family: system-ui, -apple-system, sans-serif;
+      padding: 10px;
+      background: #121418;
+      color: #f3f4f6;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       min-height: 100vh;
       touch-action: manipulation;
     }
-    .header {
-      text-align: center;
-      margin-bottom: 12px;
+
+    /* لوحة المعلومات العلوية */
+    .top-panel {
+      width: 95vw;
+      max-width: 420px;
+      background: #1e2229;
+      border: 1px solid #2e3440;
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
     }
-    .status-badge {
-      display: inline-block;
-      padding: 6px 14px;
-      border-radius: 20px;
-      background: #2b2b2b;
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .turn-badge {
+      font-weight: 700;
       font-size: 14px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: #2b303c;
+    }
+    .mode-select {
+      background: #2b303c;
+      color: #fff;
+      border: 1px solid #4b5563;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
       font-weight: bold;
     }
+    .coach-box {
+      background: #15181e;
+      border-right: 4px solid #10b981;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .coach-meta {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    /* حاوية الرقعة وشريط التقييم */
+    .arena {
+      display: flex;
+      gap: 8px;
+      width: 95vw;
+      max-width: 420px;
+      align-items: stretch;
+    }
+    .eval-bar-wrap {
+      width: 16px;
+      background: #262421;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #3f3f46;
+      position: relative;
+    }
+    .eval-black {
+      background: #312e2b;
+      width: 100%;
+      height: 50%;
+      transition: height 0.4s ease;
+    }
+    .eval-white {
+      background: #e5e7eb;
+      width: 100%;
+      flex: 1;
+    }
+    .eval-score {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 9px;
+      font-weight: bold;
+      color: #10b981;
+      background: rgba(0,0,0,0.75);
+      padding: 2px 1px;
+      border-radius: 3px;
+    }
+
     .board-container {
       position: relative;
-      width: 92vw;
-      max-width: 380px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      flex: 1;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.6);
       border-radius: 8px;
       overflow: hidden;
     }
@@ -53,136 +131,327 @@
       left: 0;
       width: 100%;
       height: 100%;
-      pointer-events: none; /* للسماح بلمس الرقعة أسفل الرسم */
-      z-index: 10;
+      pointer-events: none;
+      z-index: 15;
     }
+
+    /* تظليل المربعات عند اللمس */
+    .highlight-sq {
+      box-shadow: inset 0 0 3px 3px rgba(16, 185, 129, 0.85) !important;
+    }
+
+    /* أزرار التحكم */
     .controls {
-      display: flex;
-      gap: 10px;
-      margin-top: 15px;
-      width: 92vw;
-      max-width: 380px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+      width: 95vw;
+      max-width: 420px;
     }
     button {
-      flex: 1;
-      padding: 12px;
+      padding: 11px 8px;
       border: none;
       border-radius: 8px;
-      font-size: 14px;
-      font-weight: bold;
-      background: #3b82f6;
+      font-size: 13px;
+      font-weight: 700;
+      background: #2563eb;
       color: #fff;
       cursor: pointer;
+      transition: opacity 0.15s;
     }
+    button:active { opacity: 0.75; }
     button.secondary { background: #374151; }
+    button.accent { background: #059669; }
+
+    .legend {
+      display: flex;
+      gap: 15px;
+      margin-top: 8px;
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    .dot-green { color: #10b981; font-weight: bold; }
+    .dot-blue { color: #3b82f6; font-weight: bold; }
   </style>
 </head>
 <body>
 
-  <div class="header">
-    <div id="status" class="status-badge">الدور: الأبيض ⚪</div>
+  <div class="top-panel">
+    <div class="status-row">
+      <div id="status" class="turn-badge">الدور: الأبيض ⚪</div>
+      <select id="mode-select" class="mode-select">
+        <option value="human_pro">نمط بشري محترف (طبيعي)</option>
+        <option value="killer">نمط المحرك الخارق (أقوى نقلة)</option>
+        <option value="student">نمط تدريبي مرن</option>
+      </select>
+    </div>
+    <div class="coach-box">
+      <div id="coach-text">جاري تحليل الموقف...</div>
+      <div class="coach-meta">
+        <span id="move-hint">النقلة: --</span>
+        <span id="time-hint">⏱️ وقت التفكير الطبيعي: --</span>
+      </div>
+    </div>
   </div>
 
-  <div class="board-container">
-    <div id="board"></div>
-    <canvas id="arrow-canvas"></canvas>
+  <div class="arena">
+    <div class="eval-bar-wrap">
+      <div id="eval-black" class="eval-black"></div>
+      <div class="eval-white"></div>
+      <div id="eval-text" class="eval-score">0.0</div>
+    </div>
+
+    <div class="board-container">
+      <div id="board"></div>
+      <canvas id="arrow-canvas"></canvas>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><span class="dot-green">━━►</span> النقلة المختارة</span>
+    <span><span class="dot-blue">- - ►</span> الخيار البديل</span>
   </div>
 
   <div class="controls">
     <button class="secondary" id="btn-undo">↩️ تراجع</button>
-    <button id="btn-new">🔄 لعبة جديدة</button>
+    <button class="accent" id="btn-flip">🔃 قلب الرقعة</button>
+    <button id="btn-new">🔄 جديد</button>
   </div>
 
   <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand(); // فتح التطبيق بكامل الشاشة داخل تيليجرام
+    if (window.Telegram && window.Telegram.WebApp) {
+      window.Telegram.WebApp.expand();
+    }
 
     const game = new Chess();
     const boardEl = $('#board');
     const canvas = document.getElementById('arrow-canvas');
     const ctx = canvas.getContext('2d');
+    let selectedSquare = null;
 
-    // إعدادات أحجام الرقعة
+    // ==================== خرائط التمركز الاستراتيجي (PST) ====================
+    const pawnPST = [
+      [0,  0,  0,  0,  0,  0,  0,  0],
+      [50, 50, 50, 50, 50, 50, 50, 50],
+      [10, 10, 20, 30, 30, 20, 10, 10],
+      [5,  5, 10, 25, 25, 10,  5,  5],
+      [0,  0,  0, 20, 20,  0,  0,  0],
+      [5, -5,-10,  0,  0,-10, -5,  5],
+      [5, 10, 10,-20,-20, 10, 10,  5],
+      [0,  0,  0,  0,  0,  0,  0,  0]
+    ];
+
+    const knightPST = [
+      [-50,-40,-30,-30,-30,-30,-40,-50],
+      [-40,-20,  0,  0,  0,  0,-20,-40],
+      [-30,  0, 10, 15, 15, 10,  0,-30],
+      [-30,  5, 15, 20, 20, 15,  5,-30],
+      [-30,  0, 15, 20, 20, 15,  0,-30],
+      [-30,  5, 10, 15, 15, 10,  5,-30],
+      [-40,-20,  0,  5,  5,  0,-20,-40],
+      [-50,-40,-30,-30,-30,-30,-40,-50]
+    ];
+
+    const bishopPST = [
+      [-20,-10,-10,-10,-10,-10,-10,-20],
+      [-10,  0,  0,  0,  0,  0,  0,-10],
+      [-10,  0,  5, 10, 10,  5,  0,-10],
+      [-10,  5,  5, 10, 10,  5,  5,-10],
+      [-10,  0, 10, 10, 10, 10,  0,-10],
+      [-10, 10, 10, 10, 10, 10, 10,-10],
+      [-10,  5,  0,  0,  0,  0,  5,-10],
+      [-20,-10,-10,-10,-10,-10,-10,-20]
+    ];
+
+    const pieceBaseValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+
+    function evaluatePosition() {
+      if (game.in_checkmate()) {
+        return game.turn() === 'w' ? -99999 : 99999;
+      }
+      if (game.in_draw() || game.in_stalemate() || game.in_threefold_repetition()) {
+        return 0;
+      }
+
+      let totalScore = 0;
+      const b = game.board();
+
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const piece = b[r][c];
+          if (!piece) continue;
+
+          let val = pieceBaseValues[piece.type];
+          const rowIdx = piece.color === 'w' ? r : 7 - r;
+
+          if (piece.type === 'p') val += pawnPST[rowIdx][c];
+          else if (piece.type === 'n') val += knightPST[rowIdx][c];
+          else if (piece.type === 'b') val += bishopPST[rowIdx][c];
+
+          totalScore += (piece.color === 'w' ? val : -val);
+        }
+      }
+      return totalScore;
+    }
+
+    // خوارزمية Minimax مع تقليم Alpha-Beta لعمق تكتيكي قوي
+    function minimax(depth, alpha, beta, isMaximizing) {
+      if (depth === 0 || game.game_over()) {
+        return evaluatePosition();
+      }
+
+      const moves = game.moves({ verbose: true });
+      // ترتيب الحركات التي فيها أكل قطع أولاً لتسريع الذكاء الاصطناعي
+      moves.sort((a, b) => (b.captured ? 10 : 0) - (a.captured ? 10 : 0));
+
+      if (isMaximizing) {
+        let maxEval = -Infinity;
+        for (let i = 0; i < moves.length; i++) {
+          game.move(moves[i]);
+          const evaluation = minimax(depth - 1, alpha, beta, false);
+          game.undo();
+          maxEval = Math.max(maxEval, evaluation);
+          alpha = Math.max(alpha, evaluation);
+          if (beta <= alpha) break;
+        }
+        return maxEval;
+      } else {
+        let minEval = Infinity;
+        for (let i = 0; i < moves.length; i++) {
+          game.move(moves[i]);
+          const evaluation = minimax(depth - 1, alpha, beta, true);
+          game.undo();
+          minEval = Math.min(minEval, evaluation);
+          beta = Math.min(beta, evaluation);
+          if (beta <= alpha) break;
+        }
+        return minEval;
+      }
+    }
+
+    // اختيار النقلة الذكية وتحليل سببها
+    function analyzePosition() {
+      const moves = game.moves({ verbose: true });
+      if (moves.length === 0) return null;
+
+      const isWhite = game.turn() === 'w';
+      const scoredMoves = [];
+
+      // عمق البحث التكتيكي
+      const searchDepth = moves.length > 28 ? 2 : 3;
+
+      for (let i = 0; i < moves.length; i++) {
+        const m = moves[i];
+        game.move(m);
+        let score = minimax(searchDepth - 1, -Infinity, Infinity, !isWhite);
+
+        // مكافأة إضافية للتمويه البشري (التبييت وتطوير القطع بالافتتاح)
+        const bonus = (m.san.includes('O-O') ? 35 : 0) + (game.in_check() ? 15 : 0);
+        score += isWhite ? bonus : -bonus;
+
+        game.undo();
+        scoredMoves.push({ move: m, score: score });
+      }
+
+      scoredMoves.sort((a, b) => isWhite ? b.score - a.score : a.score - b.score);
+
+      const mode = $('#mode-select').val();
+      const bestMoveObj = scoredMoves[0];
+      const secondMoveObj = scoredMoves.length > 1 ? scoredMoves[1] : null;
+
+      let chosen = bestMoveObj;
+
+      if (mode === 'human_pro' && secondMoveObj) {
+        // إذا كان الفرق بين النقلة الأولى والثانية بسيطاً جداً (أقل من 0.40 بيدق) ولا يوجد تهديد خطير
+        const diff = Math.abs(bestMoveObj.score - secondMoveObj.score);
+        if (diff <= 40 && Math.random() < 0.35) {
+          chosen = secondMoveObj;
+        }
+      } else if (mode === 'student' && scoredMoves.length > 2) {
+        const safePool = scoredMoves.filter(s => Math.abs(s.score - bestMoveObj.score) <= 75);
+        chosen = safePool[Math.floor(Math.random() * safePool.length)];
+      }
+
+      return {
+        primary: chosen.move,
+        alternative: (chosen === bestMoveObj && secondMoveObj) ? secondMoveObj.move : bestMoveObj.move,
+        evalScore: bestMoveObj.score / 100
+      };
+    }
+
+    // توليد الشرح التدريبي ووقت التفكير البشري
+    function explainMove(move, legalCount) {
+      let reason = "تطوير استراتيجي وتحسين تمركز القطع";
+      let thinkTime = "3 - 5 ثوانٍ";
+
+      if (move.san.includes('#')) {
+        reason = "🔥 ضربة قاضية (كش مات مباشر)!";
+        thinkTime = "1 - 2 ثانية";
+      } else if (move.san.includes('+')) {
+        reason = "⚡ هجوم مباشر (كش ملك) لإجبار الخصم على التراجع";
+        thinkTime = "2 - 4 ثوانٍ";
+      } else if (move.captured) {
+        reason = "🎯 كسب مادي / تبادل قطع لصالحك";
+        thinkTime = "1.5 - 3 ثوانٍ (رد بديهي)";
+      } else if (move.san.includes('O-O')) {
+        reason = "🛡️ تبييت لتأمين الملك وتفعيل الرخ";
+        thinkTime = "2 - 3 ثوانٍ";
+      } else if (['d4', 'e4', 'd5', 'e5'].includes(move.to)) {
+        reason = "♟️ سيطرة مباشرة على مربعات المركز الحيوية";
+        thinkTime = "2 - 4 ثوانٍ";
+      } else if (legalCount > 30) {
+        reason = "🧠 مناورة تكتيكية في موقف معقد";
+        thinkTime = "6 - 9 ثوانٍ (موقف يحتاج تركيز)";
+      }
+
+      return { reason, thinkTime };
+    }
+
+    // ==================== رسم الأسهم على الرقعة ====================
     function resizeCanvas() {
       canvas.width = boardEl.width();
       canvas.height = boardEl.height();
     }
 
-    // تقييم القطع
-    const pieceValues = { p: 10, n: 32, b: 33, r: 50, q: 90, k: 1000 };
-
-    // حساب حركة بشرية ذكية مع سهم
-    function getHumanlikeMove() {
-      const moves = game.moves({ verbose: true });
-      if (moves.length === 0) return null;
-
-      const scored = [];
-      moves.forEach(m => {
-        game.move(m);
-        let score = 0;
-        game.board().forEach(row => {
-          row.forEach(p => {
-            if (p) {
-              const val = pieceValues[p.type];
-              score += (p.color === 'w' ? val : -val);
-            }
-          });
-        });
-        game.undo();
-        scored.push({ move: m, score: score });
-      });
-
-      // ترتيب حسب صاحب الدور
-      const isWhite = (game.turn() === 'w');
-      scored.sort((a, b) => isWhite ? b.score - a.score : a.score - b.score);
-
-      // استبعاد النقلات الفادحة وحساب نسبة بشرية
-      const best = scored[0].score;
-      const safeMoves = scored.filter(s => Math.abs(s.score - best) <= 15);
-
-      const roll = Math.random();
-      if (roll < 0.65 || safeMoves.length === 1) return safeMoves[0].move;
-      if (roll < 0.90 && safeMoves.length >= 2) return safeMoves[1].move;
-      return safeMoves[safeMoves.length - 1].move;
-    }
-
-    // رسم السهم من مربع إلى مربع
-    function drawArrow(fromSquare, toSquare) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (!fromSquare || !toSquare) return;
-
+    function getSquareCenter(sq) {
       const sqSize = canvas.width / 8;
       const files = 'abcdefgh';
+      const orientation = board.orientation();
+      let fileIdx = files.indexOf(sq[0]);
+      let rankIdx = 8 - parseInt(sq[1]);
 
-      function getCenter(sq) {
-        const file = files.indexOf(sq[0]);
-        const rank = 8 - parseInt(sq[1]);
-        return {
-          x: file * sqSize + sqSize / 2,
-          y: rank * sqSize + sqSize / 2
-        };
+      if (orientation === 'black') {
+        fileIdx = 7 - fileIdx;
+        rankIdx = 7 - rankIdx;
       }
 
-      const start = getCenter(fromSquare);
-      const end = getCenter(toSquare);
+      return {
+        x: fileIdx * sqSize + sqSize / 2,
+        y: rankIdx * sqSize + sqSize / 2
+      };
+    }
 
-      // رسم خط السهم ورأسه
-      const headlen = 16;
+    function drawSingleArrow(fromSq, toSq, color, isDashed = false) {
+      if (!fromSq || !toSq) return;
+      const start = getSquareCenter(fromSq);
+      const end = getSquareCenter(toSq);
+      const headlen = 15;
       const angle = Math.atan2(end.y - start.y, end.x - start.x);
 
       ctx.save();
-      ctx.strokeStyle = "rgba(46, 204, 113, 0.85)";
-      ctx.fillStyle = "rgba(46, 204, 113, 0.85)";
-      ctx.lineWidth = 8;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = isDashed ? 5 : 8;
       ctx.lineCap = "round";
+      if (isDashed) ctx.setLineDash([8, 6]);
 
-      // جسم السهم
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x - headlen * Math.cos(angle), end.y - headlen * Math.sin(angle));
       ctx.stroke();
 
-      // رأس السهم
+      ctx.setLineDash([]);
       ctx.beginPath();
       ctx.moveTo(end.x, end.y);
       ctx.lineTo(end.x - headlen * Math.cos(angle - Math.PI / 6), end.y - headlen * Math.sin(angle - Math.PI / 6));
@@ -192,75 +461,152 @@
       ctx.restore();
     }
 
-    function updateGameStatus() {
-      let statusText = game.turn() === 'w' ? 'الدور: الأبيض ⚪' : 'الدور: الأسود ⚫';
-      if (game.in_checkmate()) {
-        statusText = '🏁 كش مات! الفائز: ' + (game.turn() === 'w' ? 'الأسود' : 'الأبيض');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      } else if (game.in_draw()) {
-        statusText = '⚖️ تعادل!';
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      } else {
-        // رسم سهم النقلة المقترحة
-        const hint = getHumanlikeMove();
-        if (hint) {
-          drawArrow(hint.from, hint.to);
-        }
-      }
-      $('#status').text(statusText);
+    function updateEvalBar(score) {
+      const clamped = Math.max(-10, Math.min(10, score));
+      const blackPercent = 50 - (clamped * 5);
+      $('#eval-black').css('height', `${blackPercent}%`);
+      const formatted = (score > 0 ? '+' : '') + score.toFixed(1);
+      $('#eval-text').text(formatted);
     }
 
-    // تهيئة رقعة الشطرنج اللمسية
+    function updateTrainer() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (game.in_checkmate()) {
+        const winner = game.turn() === 'w' ? 'الأسود ⚫' : 'الأبيض ⚪';
+        $('#status').text(`🏁 كش مات! الفائز: ${winner}`);
+        $('#coach-text').text('انتهت المباراة بكش مات.');
+        return;
+      }
+      if (game.in_draw()) {
+        $('#status').text('⚖️ تعادل!');
+        $('#coach-text').text('انتهت المباراة بالتعادل.');
+        return;
+      }
+
+      const turnText = game.turn() === 'w' ? 'الدور: الأبيض ⚪' : 'الدور: الأسود ⚫';
+      $('#status').text(turnText);
+
+      setTimeout(() => {
+        const result = analyzePosition();
+        if (!result) return;
+
+        // رسم السهم البديل أولاً ثم الأساسي فوقه
+        if (result.alternative && result.alternative.san !== result.primary.san) {
+          drawSingleArrow(result.alternative.from, result.alternative.to, "rgba(59, 130, 246, 0.75)", true);
+        }
+        drawSingleArrow(result.primary.from, result.primary.to, "rgba(16, 185, 129, 0.92)", false);
+
+        updateEvalBar(result.evalScore);
+
+        const info = explainMove(result.primary, game.moves().length);
+        $('#coach-text').text(info.reason);
+        $('#move-hint').text(`النقلة: ${result.primary.from} ➔ ${result.primary.to} (${result.primary.san})`);
+        $('#time-hint').text(`⏱️ التفكير الطبيعي: ${info.thinkTime}`);
+      }, 60);
+    }
+
+    // ==================== إعداد الرقعة واللمس السريع ====================
     const board = Chessboard('board', {
       draggable: true,
       position: 'start',
       pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
       onDragStart: function(source, piece) {
         if (game.game_over()) return false;
-        // يمكنك تحريك أي قطعة (أبيض أو أسود)
         if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
             (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
           return false;
         }
       },
       onDrop: function(source, target) {
-        const move = game.move({
-          from: source,
-          to: target,
-          promotion: 'q'
-        });
+        const move = game.move({ from: source, to: target, promotion: 'q' });
         if (move === null) return 'snapback';
-        updateGameStatus();
+        clearHighlights();
+        selectedSquare = null;
+        updateTrainer();
       },
       onSnapEnd: function() {
         board.position(game.fen());
       }
     });
 
-    $(window).resize(function() {
+    function clearHighlights() {
+      $('#board .square-55d63').removeClass('highlight-sq');
+    }
+
+    // دعم النقر باللمس (Click-to-Move) بالإضافة للسحب لسهولة الاستخدام على التابلت
+    $('#board').on('click', '.square-55d63', function() {
+      const sq = $(this).attr('data-square');
+      if (!sq) return;
+
+      if (!selectedSquare) {
+        const piece = game.get(sq);
+        if (piece && piece.color === game.turn()) {
+          selectedSquare = sq;
+          clearHighlights();
+          $(this).addClass('highlight-sq');
+        }
+      } else {
+        if (sq === selectedSquare) {
+          clearHighlights();
+          selectedSquare = null;
+          return;
+        }
+        const move = game.move({ from: selectedSquare, to: sq, promotion: 'q' });
+        if (move) {
+          board.position(game.fen());
+          clearHighlights();
+          selectedSquare = null;
+          updateTrainer();
+        } else {
+          const piece = game.get(sq);
+          if (piece && piece.color === game.turn()) {
+            selectedSquare = sq;
+            clearHighlights();
+            $(this).addClass('highlight-sq');
+          } else {
+            clearHighlights();
+            selectedSquare = null;
+          }
+        }
+      }
+    });
+
+    $(window).resize(() => {
       board.resize();
       resizeCanvas();
-      updateGameStatus();
+      updateTrainer();
     });
+
+    $('#mode-select').change(() => updateTrainer());
 
     $('#btn-new').click(() => {
       game.reset();
       board.start();
+      clearHighlights();
+      selectedSquare = null;
       resizeCanvas();
-      updateGameStatus();
+      updateTrainer();
     });
 
     $('#btn-undo').click(() => {
       game.undo();
       board.position(game.fen());
-      updateGameStatus();
+      clearHighlights();
+      selectedSquare = null;
+      updateTrainer();
     });
 
-    // تشغيل أولي
+    $('#btn-flip').click(() => {
+      board.flip();
+      resizeCanvas();
+      updateTrainer();
+    });
+
     setTimeout(() => {
       resizeCanvas();
-      updateGameStatus();
-    }, 200);
+      updateTrainer();
+    }, 250);
   </script>
 </body>
 </html>
